@@ -9,7 +9,7 @@ module load qibo
 unset PYTHONPATH
 python3 -m venv "$ENV_DIR"
 source "$ENV_DIR/bin/activate"
-pip install --upgrade pip
+pip install --upgrade pip setuptools wheel
 
 # Install whichever editable local packages you want to use in dev_env
 pip install -e ~/qibocal-eo-fork
