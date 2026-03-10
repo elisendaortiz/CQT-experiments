@@ -20,19 +20,26 @@ def load_secrets():
 def main():
     parser = argparse.ArgumentParser(description="Upload experiment results")
     parser.add_argument("--hashid", required=True, help="Hash ID for the calibration")
-    parser.add_argument("--runid", required=True, help="Run ID for the experiment")
+    parser.add_argument("--runid", help="Run ID for the experiment")
+    parser.add_argument("--upload-calibration", action="store_true",
+                        help="Upload calibration instead of results")
     args = parser.parse_args()
-    
+
+    if not args.upload_calibration and not args.runid:
+        parser.error("--runid is required when not using --upload-calibration")
+
     # Load credentials from .secrets.toml
     secrets = load_secrets()
     server_url = secrets["server_url"]
     api_token = secrets["api_token"]
-    
+
     # Set server with credentials from secrets
     set_server(server_url=server_url, api_token=api_token)
-    
-    # Upload results
-    rsp = results_upload(hashID=args.hashid, runID=args.runid, data_folder="./data")
+
+    if args.upload_calibration:
+        rsp = calibrations_upload(hashID=args.hashid, calibrations_folder="./data/calibrations")
+    else:
+        rsp = results_upload(hashID=args.hashid, runID=args.runid, data_folder="./data")
     print(rsp)
 
 
