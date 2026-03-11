@@ -27,10 +27,37 @@ Exit codes:
     1 — compatibility_matrix.toml not found
 """
 
+import re
 import sys
 import tempfile
-import tomllib
 from pathlib import Path
+
+try:
+    import tomllib
+
+    def _load_toml(path: Path) -> dict:
+        with open(path, "rb") as f:
+            return tomllib.load(f)
+
+except ImportError:
+    # Python < 3.11: minimal parser sufficient for our specific TOML structure.
+    # Handles [[combos]] section headers and key = "string value" pairs only.
+    def _load_toml(path: Path) -> dict:
+        combos = []
+        current = None
+        with open(path) as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if line == "[[combos]]":
+                    current = {}
+                    combos.append(current)
+                elif current is not None:
+                    m = re.match(r'^(\w+)\s*=\s*"([^"]*)"$', line)
+                    if m:
+                        current[m.group(1)] = m.group(2)
+        return {"combos": combos}
 
 
 MATRIX_FILE = Path(__file__).parent.parent / "compatibility_matrix.toml"
@@ -45,7 +72,7 @@ REPO_TO_PACKAGE = {
 }
 
 
-def package_from_repo(repo_name: str) -> str | None:
+def package_from_repo(repo_name: str):
     """Return the PyPI package name for a given repo folder name, if known."""
     for pkg, fragment in REPO_TO_PACKAGE.items():
         if fragment in repo_name.lower():
@@ -64,8 +91,7 @@ def main():
         print(f"ERROR: compatibility matrix not found at {MATRIX_FILE}", file=sys.stderr)
         sys.exit(1)
 
-    with open(MATRIX_FILE, "rb") as f:
-        matrix = tomllib.load(f)
+    matrix = _load_toml(MATRIX_FILE)
 
     combos = matrix.get("combos", [])
     if not combos:
