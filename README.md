@@ -1,54 +1,101 @@
 # CQT-experiments
 
-This project provides a benchmarking suite for quantum experiments. The system uses a batch runner (`scripts_executor`) that executes experiments defined in an ini configuration file, organizing results in a standardized directory structure.
-
-To test your software, you have to call:
- 
-`sbatch run_sinq20.sh`
-
-if you want to submit a batch of experiments, or:
-
-`srun -p sinq20 run_sinq20.sh`
-
-to execute the job in "run" (i.e. non-batch) mode.
-
+This project provides a benchmarking suite for quantum experiments. The system uses a batch runner (`scripts_executor`) that executes experiments defined in an ini configuration file (experiments_list.ini), organizing results in a standardized directory structure. 
 
 ## Project Structure
 
 ```
 CQT-experiments/
+├── workspace/
+│   ├── setup_dev_env.sh       # Creates the Python virtual environment
+│   ├── compatibility_matrix.toml  # Pinned package version combos
+│   └── resolve_constraints.py # Reads the matrix and emits pip pins
+├── pipeline/
+│   ├── run_sinq20_dev.sh      # Slurm job script (dev environment)
+│   ├── run_sinq20.sh          # Slurm job script (legacy)
+│   ├── run_numpy.sh           # Slurm job script (numpy simulation)
+│   ├── experiment_list.ini    # Defines which experiments to run
+│   ├── upload_experiment.py   # Uploads results to the remote database
+│   └── set_best_run.py        # Marks a run as the current best
 ├── scripts/
-│   ├── <experiment1>/
-│   │   └── main.py          # Experiment entry point
-│   ├── config.py            # Helper utilities for path resolution
-│   └── scripts_executor.py  # Batch runner that reads ini file
-├── data/                    # where the data gets stored
-├── experiments_list.ini     # Defines which experiments to run
+│   ├── <experiment>/
+│   │   └── main.py            # Experiment entry point
+│   ├── config.py              # Path resolution helpers
+│   └── scripts_executor.py   # Batch runner
+├── clientdb/
+│   └── client.py              # HTTP client for the remote DB API
+├── data/                      # Experiment output (gitignored)
 └── pyproject.toml
-|__ upload.py.               # uploads the results of the experiments in the database
 ```
+
+## Setup: Creating the Workspace Environment
+
+The workspace environment is a Python virtual environment with pinned, compatible versions of the qibo ecosystem packages. It is defined entirely in `workspace/setup_dev_env.sh`.
+
+### 1. Configure your local package clones
+
+Open `workspace/setup_dev_env.sh` and edit the two variables at the top:
+
+```bash
+ENV_DIR=~/envs/workspace_env   # path where the venv will be created
+
+REPOS=(
+  "CQT-experiments-pipeline-benchmarking"  # your CQT-experiments clone (always first)
+  "qibocal"                                 # any other local package clones to install as editable
+)
+```
+
+- `ENV_DIR` — where the virtual environment will be created on disk.
+- `REPOS` — folder names under `~/` to install as editable packages (`pip install -e`). The **first entry** must always be the CQT-experiments clone you want to run from. Add any other locally cloned packages (e.g. `qibocal`, `qibolab`) that you want to develop against.
+
+Package versions for everything not listed in `REPOS` are pinned automatically from `workspace/compatibility_matrix.toml`.
+
+### 2. Create the environment
+
+From inside the repo:
+
+```bash
+bash workspace/setup_dev_env.sh
+```
+
+This will create the venv, install all packages with correct version pins, and configure a fallback to the system `qibo` module for hardware-specific packages (e.g. Keysight drivers).
+
+### 3. Credentials
+
+Scripts that interact with the remote database read credentials from `~/.env_user` (outside any repo). Copy the provided template and fill in your values:
+
+```bash
+cp .env_user.example ~/.env_user
+chmod 600 ~/.env_user
+# edit ~/.env_user with real values
+```
+
+## Running Experiments
+
+To submit a batch of experiments to the sinq20 device via Slurm:
+
+```bash
+sbatch pipeline/run_sinq20_dev.sh
+```
+
+To cancel a submitted job:
+
+```bash
+scancel <job_id>
+```
+
+The job ID is printed by `sbatch` on submission. Logs are written to `logs/slurm_sinq20_dev_<job_id>.out / .err`.
+
+`run_sinq20_dev.sh` sources `workspace/setup_dev_env.sh` at runtime to pick up `ENV_DIR` and `REPOS` — there is no duplication between the two files.
 
 ## How It Works
 
-The `scripts_executor` reads the `experiments_list.ini` file to determine which experiments to run. Each experiment is organized in sections within the ini file:
+`scripts_executor.py` reads `pipeline/experiment_list.ini` to determine which experiments to run. Each experiment is organised in sections by qubit count:
 
-- **[calibration]** - Core calibration experiments (DO NOT COMMENT)
-- **[i]** - Subroutine that are using i qubits.
+- **[calibration]** — core calibration experiments (do not comment out)
+- **[i]** — experiments using i qubits
 
-The executor runs each enabled experiment's `main.py` with the specified parameters, collecting results in the standardized `data/` structure.
-
-## Development
-
-Perform this in your account (is creating a virtualenv with libraries that are not installed in the default qibo module)
-
-```
-  module load qibo
-  python -m venv ~/envs/qibo_env
-  source ~/envs/qibo_env/bin/activate
-  pip install --upgrade pip
-  pip install GitPython
-  pip install -e .  # Install project and all dependencies
-```
+The executor runs each enabled experiment's `main.py`, collecting results under `data/`.
 
 ## Rules for Adding New Experiments
 

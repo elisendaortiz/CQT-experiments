@@ -1,0 +1,13 @@
+# Known-good version combos for the qibo ecosystem.
+#
+# Add a new entry when you verify a new set of versions works together.
+# The resolver picks the LATEST entry (by date) as the active combo.
+# Packages listed here that you are NOT installing as editable forks
+# will be pinned to the exact version specified.
+
+[[combos]]
+date        = "2026-03-11"
+description = "qibocal 0.2.x series — qibo 0.3.x breaks compatibility"
+qibo        = "0.2.23"
+qibocal     = "0.2.5"
+qibolab     = "0.2.9"
