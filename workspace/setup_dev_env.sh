@@ -7,7 +7,7 @@ set -euo pipefail
 # This is the only section you need to edit.
 # =============================================================================
 REPOS=(
-  "qibocal-eo-fork"
+  "qibocal"
   "CQT-experiments-eo-fork"
 )
 
