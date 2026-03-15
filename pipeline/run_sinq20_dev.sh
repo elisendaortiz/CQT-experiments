@@ -14,7 +14,12 @@ echo "Log files: logs/slurm_sinq20_dev_${SLURM_JOB_ID}.out / .err"
 # into zzz_module_fallback.pth automatically so they are forced to resolve only if needed.
 module load qibo
 unset PYTHONPATH                    # unset path set by module qibo
-source ~/envs/dev_env/bin/activate  # get packages from dev_env
+
+# Source setup_dev_env.sh to get ENV_DIR and REPOS (no setup runs, only variables)
+SETUP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../workspace" && pwd)/setup_dev_env.sh"
+source "$SETUP_SCRIPT"
+
+source "$ENV_DIR/bin/activate"      # get packages from dev_env
 
 export CUDA_VISIBLE_DEVICES=0
 
@@ -32,5 +37,5 @@ for pkg in qibocal qibolab qibo; do
 done
 echo "==============================="
 
-cd ~/CQT-experiments-eo-fork
+cd ~/"${REPOS[-1]}"
 python3 scripts/scripts_executor.py --device sinq20

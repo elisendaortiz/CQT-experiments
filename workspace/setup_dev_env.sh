@@ -1,20 +1,26 @@
 #!/bin/bash
-set -euo pipefail
 
 # =============================================================================
 # SECTION 1 — USER CONFIG
 # List the repo folder names (under ~/) you want installed as editable packages.
 # This is the only section you need to edit.
+# The last entry in REPOS is treated as the CQT experiments repo to run from.
 # =============================================================================
+ENV_DIR=~/envs/workspace_env
+
 REPOS=(
   "qibocal"
   "CQT-experiments-pipeline-benchmarking"
 )
 
+# When sourced by another script (e.g. run_sinq20_dev.sh), only the variables
+# above are evaluated — the setup body below does not run.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+set -euo pipefail
+
 # =============================================================================
 # SECTION 2 — ENV SETUP
 # =============================================================================
-ENV_DIR=~/envs/dev_env
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 module load qibo
@@ -95,3 +101,5 @@ echo ""
 echo "===== qibocal location ====="
 pip show qibocal | grep -E "^(Name|Version|Location|Editable)"
 echo "=============================="
+
+fi # end of direct-execution guard
